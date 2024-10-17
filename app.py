@@ -1,19 +1,34 @@
+import spacy
 from flask import Flask, request, jsonify, render_template
 
+# Load English tokenizer, tagger, parser, NER, and word vectors
+nlp = spacy.load("en_core_web_sm")
+
+# Function to make predictions using NLP
+def predict_talent_nlp(input_data):
+    # Concatenate all user responses into a single string
+    concatenated_responses = ' '.join(input_data.values())
+    
+    # Process the text using spaCy
+    doc = nlp(concatenated_responses)
+    
+    # Extract nouns and proper nouns (potential talents) from the text
+    talents = [token.text.lower() for token in doc if token.pos_ in ['NOUN', 'PROPN']]
+    
+    # Define a list of talents to check for
+    talent_keywords = ["programming", "cooking", "baking", "pottery", "knitting", "painting", 
+                       "dancing", "sculpting", "photography", "graphics designing", "writing"]
+    
+    # Check if any of the talent keywords are present in the extracted talents
+    predicted_talent = "Unknown"
+    for talent in talent_keywords:
+        if talent in talents:
+            predicted_talent = talent
+            break
+
+    return predicted_talent
+
 app = Flask(__name__)
-
-
-
-import joblib
-
-def load_model():
-    # Load your trained model here
-    model = joblib.load('trained_model_updated.pkl')  # Replace 'model.pkl' with the path to your saved model file
-    return model
-
-
-
-model = load_model()
 
 # Define route for home page
 @app.route('/')
@@ -36,27 +51,8 @@ def predict():
         'q10': request.form['q10']
     }
     # Preprocess input data if necessary
-    prediction = predict_talent(input_data)
+    prediction = predict_talent_nlp(input_data)
     return jsonify({'prediction': prediction})
-
-# Function to make predictions
-def predict_talent(input_data):
-    # Concatenate all user responses into a single string
-    concatenated_responses = ' '.join(input_data.values())
-
-    # Define a list of talents to check for in the concatenated responses
-    talents = ["programming", "cooking", "baking", "pottery", "knitting", "painting", 
-               "dancing", "sculpting", "photography", "graphics designing", "writing"]
-
-    # Iterate over the list of talents and check if any of them are mentioned in the responses
-    predicted_talent = "Unknown"
-    for talent in talents:
-        if talent in concatenated_responses.lower():
-            predicted_talent = talent
-            break
-
-    return predicted_talent
-
 
 if __name__ == '__main__':
     app.run(debug=True)
